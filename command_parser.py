@@ -20,7 +20,7 @@ def do_prepare_command(command):
     if command[:6].lower() == "insert":
         statement.status = PrepareStatus.Success
         statement.statement_type = StatementType.Insert
-    elif command[:7].lower() == "select":
+    elif command[:6].lower() == "select":
         statement.status =  PrepareStatus.Success
         statement.statement_type = StatementType.Select
     elif command[:6].lower() == "update":
@@ -36,23 +36,39 @@ def do_prepare_command(command):
         statement.status = PrepareStatus.UnrecognizedStatement
         return statement
     if statement.status == PrepareStatus.Success:
-        statement.args = split_expr(statement.expr)
+        statement.args = split_expr(statement.expr.lower())
+    return statement
 
 
 def execute_statement(statement):
     if statement.statement_type == StatementType.Insert:
-        print("this is where we would do an insert")
+        table_name = statement.args[2]
+        table = tables[table_name]
+        key_string = statement.args[3][1:-1]
+        vals_string = statement.args[5][1:-1]
+        keys = list(map(lambda x: x.strip(), key_string.split(",")))
+        vals = split_expr(vals_string, ignoreparen=True, splitby=",")
+        table.execute_insert(keys, vals)
+        print("executed")
     if statement.statement_type == StatementType.Select:
-        print("this is where we would do a select")
+        table_name = statement.args[statement.args.index("from")+1]
+        rows = tables[table_name].execute_select()
+        print("-"*60)
+        print(rows[0])
+        print("-"*60)
+        for row in rows[1:]:
+            print(", ".join(row))
+        print("-"*60)
     if statement.statement_type == StatementType.Update:
         print("this is where we would do an update")
     if statement.statement_type == StatementType.Delete:
         print("this is where we would a delete")
     if statement.statement_type == StatementType.Create:
-        table_def = statement.args[3]
+        table_def = statement.args[2]
         table_name = table_def[:table_def.index("(")]
         table_cols = table_def[table_def.index("(")+1:-1]
-        col_defs = table_cols.split(",")
+        col_defs = list(map(lambda x: x.strip(), table_cols.split(",")))
+        print(col_defs)
         names = []
         dtypes = []
         for col_def in col_defs:
@@ -60,12 +76,10 @@ def execute_statement(statement):
             names.append(col_def[0])
             dtypes.append(col_def[1])
             # TODO: implement pkeys, nullables, indicies
-        tables[table_name] = Table(keys=names, dtypes=dtypes)
+        tables[table_name] = Table(keys=names, dtypes=dtypes, expr=statement.expr)
 
 
-
-
-def split_expr(string):
+def split_expr(string, ignoreparen=False, splitby=" "):
     'Splits string, ignoring parts in parentheses'
     inds = [0]
     oparen = 0
@@ -73,8 +87,8 @@ def split_expr(string):
     doublequotes = False
     singlequotes = False
     for count, char in enumerate(string):
-        if char == ' ' and oparen == clparen and not singlequotes and not doublequotes:
-            inds.append(count)
+        if char == splitby and oparen == clparen and not singlequotes and not doublequotes:
+            inds.append(count+1)
             clparen = 0
             oparen = 0
         elif char == "(":
@@ -85,8 +99,11 @@ def split_expr(string):
             doublequotes = not doublequotes
         elif char == "'":
             singlequotes = not singlequotes
+        if ignoreparen:
+            oparen = 0
+            clparen = 0
     res = []
     for i in range(1, len(inds)):
-        res.append(string[inds[i-1]:inds[i]].strip())
+        res.append(string[inds[i-1]:inds[i]-1].strip())
     res.append(string[inds[-1]:].strip())
     return res

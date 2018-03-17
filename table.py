@@ -1,10 +1,12 @@
+import sys
 class Table:
-    def __init__(self, keys, dtypes, pkeys=None, not_null=None, indices=None):
+    def __init__(self, keys, dtypes, pkeys=None, not_null=None, indices=None, expr=None):
         self.column_metadata = {key: dtype for key, dtype in zip(keys, dtypes)}
         self.columns = {key: [] for key in keys}
         self.table_max_pages = 100
         self.page_size = 4096
-        self.row_size = max(self.column_metadata.values())
+        #self.row_size = max(len(self.column_metadata.values()))
+        self.row_size = max(map(sys.getsizeof, self.column_metadata.values()))
         self.rows_per_page = self.page_size/self.row_size
         # SQLite doesnt allow alter so there isn't any way to decrease
         # table_max_rows beneath the size of the table
@@ -14,7 +16,7 @@ class Table:
     def execute_insert(self, keys, values):
         for key in self.columns.keys():
             if key in keys:
-                self.columns[key].append(values[keys.index(key)])
+                self.columns[key].append(values[keys.index(key)].replace("'", "").replace('"', ''))
             else:
                 self.columns[key].append(None)
         self.num_rows += 1
@@ -23,7 +25,7 @@ class Table:
         'no ability to have a where clause yet or select only certain rows'
         rows = []
         rows.append(self.columns.keys())
-        for i in range(len(self.num_rows)):
+        for i in range(self.num_rows):
             row = []
             for key in self.columns.keys():
                 row.append(self.columns[key][i])

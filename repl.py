@@ -9,15 +9,14 @@ try:
                 print(f"Unrecognized query {query}")
                 continue
             if status == 1:
-                print("lit")
                 continue
         else:
-            status = do_prepare_command(query)
-            if status == 0:
+            statement = do_prepare_command(query)
+            if statement.status == 0:
                 print(f"Unrecognized query {query}")
                 continue
-            if status == 1:
-                execute_statement(query)
+            if statement.status == 1:
+                execute_statement(statement)
 
 except KeyboardInterrupt:
     print("Thanks for using our SQL implementation!")
