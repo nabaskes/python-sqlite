@@ -1,11 +1,15 @@
 from status import PrepareStatus, MetaStatus, StatementType
 from statement import Statement
+from table import Table
+
+tables = {}
 
 
 def do_meta_command(command):
     if command == ".exit":
         raise KeyboardInterrupt
     if command == ".tables":
+        print([tablename for tablename in tables.keys()])
         return MetaStatus.Success
     else:
         return MetaStatus.UnrecognizedCommand
@@ -25,9 +29,6 @@ def do_prepare_command(command):
     elif command[:7].lower() == "delete":
         statement.status = PrepareStatus.Success
         statement.statement_type = StatementType.Delete
-    elif command[:6].lower() == "alter":
-        statement.status = PrepareStatus.Success
-        statement.statement_type = StatementType.Alter
     elif command[:6].lower() == "create":
         statement.status = PrepareStatus.Success
         statement.statement_type = StatementType.Create
@@ -47,10 +48,21 @@ def execute_statement(statement):
         print("this is where we would do an update")
     if statement.statement_type == StatementType.Delete:
         print("this is where we would a delete")
-    if statement.statement_type == StatementType.Alter:
-        print("this is where we would do an alter")
     if statement.statement_type == StatementType.Create:
-        print("this is where we would do a create")
+        table_def = statement.args[3]
+        table_name = table_def[:table_def.index("(")]
+        table_cols = table_def[table_def.index("(")+1:-1]
+        col_defs = table_cols.split(",")
+        names = []
+        dtypes = []
+        for col_def in col_defs:
+            col_def = col_def.split(" ")
+            names.append(col_def[0])
+            dtypes.append(col_def[1])
+            # TODO: implement pkeys, nullables, indicies
+        tables[table_name] = Table(keys=names, dtypes=dtypes)
+
+
 
 
 def split_expr(string):
